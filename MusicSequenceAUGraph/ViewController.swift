@@ -30,18 +30,18 @@ class ViewController: UIViewController {
         super.didReceiveMemoryWarning()
 
     }
-
-    @IBAction func play(sender: AnyObject) {
+    
+    @IBAction func playMe(_ sender: Any) {
         gen.play()
     }
     
-    @IBAction func stopPlaying(sender: AnyObject) {
+    @IBAction func stopPlayingMe(_ sender: Any) {
         gen.stop()
     }
     
-    @IBAction func loopSliderChanged(sender: AnyObject) {
+    @IBAction func loopSliderChanged(_ sender: AnyObject) {
         print("slider vlaue \(loopSlider.value)")
-        gen.setTrackLoopDuration(loopSlider.value)
+        gen.setTrackLoopDuration(duration: loopSlider.value)
         
     }
     
@@ -180,18 +180,17 @@ class ViewController: UIViewController {
 }
 
 extension ViewController: UIPickerViewDataSource {
-    
-    func numberOfComponentsInPickerView(pickerView: UIPickerView) -> Int {
+    func numberOfComponents(in pickerView: UIPickerView) -> Int {
         return 1
     }
     
-    func pickerView(pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
+    func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
         return 128
     }
 }
 
 extension ViewController: UIPickerViewDelegate {
-    func pickerView(pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
+    func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
 
         //var u = UInt8(row)
         for (k,v) in GMDict {
@@ -202,9 +201,9 @@ extension ViewController: UIPickerViewDelegate {
         return nil
     }
 
-    func pickerView(pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
+    func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
 
-        gen.loadSF2Preset(UInt8(row))
+        gen.loadSF2Preset(preset: UInt8(row))
     }
     
 }

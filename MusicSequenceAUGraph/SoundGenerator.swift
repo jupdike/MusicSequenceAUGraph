@@ -13,42 +13,38 @@ import AVFoundation
 
 class SoundGenerator  {
     
-    var processingGraph:AUGraph
-    var samplerUnit:AudioUnit
-    var musicPlayer:MusicPlayer
-    var musicSequence:MusicSequence = nil
+    var processingGraph: AUGraph? = nil
+    var samplerUnit: AudioUnit? = nil
+    var musicPlayer: MusicPlayer? = nil
+    var musicSequence: MusicSequence? = nil
     
     init() {
-        self.processingGraph = nil
-        self.samplerUnit = nil
-        self.musicPlayer = nil
         
         augraphSetup()
         graphStart()
         
         // after the graph starts
-        loadSF2Preset(0)
+        loadSF2Preset(preset: 0)
         //or loadDLSPreset(0)
         
         self.musicSequence = createMusicSequence()
-        self.musicPlayer = createPlayer(musicSequence)
+        self.musicPlayer = createPlayer(musicSequence: musicSequence)
         
-        CAShow(UnsafeMutablePointer<MusicSequence>(self.processingGraph))
-        CAShow(UnsafeMutablePointer<MusicSequence>(musicSequence))
+        CAShow(UnsafeMutablePointer<MusicSequence>(self.processingGraph!))
+        CAShow(UnsafeMutablePointer<MusicSequence>(musicSequence!))
     }
     
     func getTrackLength() -> MusicTimeStamp {
-        var track:MusicTrack = nil
-        let status = MusicSequenceGetIndTrack(musicSequence, 0, &track)
-        CheckError(status)
-        return getTrackLength(track)
+        var track: MusicTrack? = nil
+        let status = MusicSequenceGetIndTrack(musicSequence!, 0, &track)
+        CheckError(error: status)
+        return getTrackLength(musicTrack: track!)
     }
-    
     
     func augraphSetup() {
         var status = OSStatus(noErr)
         status = NewAUGraph(&self.processingGraph)
-        CheckError(status)
+        CheckError(error: status)
         
         // create the sampler
         
@@ -61,8 +57,8 @@ class SoundGenerator  {
             componentManufacturer: OSType(kAudioUnitManufacturer_Apple),
             componentFlags:        0,
             componentFlagsMask:    0)
-        status = AUGraphAddNode(self.processingGraph, &cd, &samplerNode)
-        CheckError(status)
+        status = AUGraphAddNode(self.processingGraph!, &cd, &samplerNode)
+        CheckError(error: status)
         
         // create the ionode
         var ioNode = AUNode()
@@ -72,26 +68,26 @@ class SoundGenerator  {
             componentManufacturer: OSType(kAudioUnitManufacturer_Apple),
             componentFlags:        0,
             componentFlagsMask:    0)
-        status = AUGraphAddNode(self.processingGraph, &ioUnitDescription, &ioNode)
-        CheckError(status)
+        status = AUGraphAddNode(self.processingGraph!, &ioUnitDescription, &ioNode)
+        CheckError(error: status)
         
         // now do the wiring. The graph needs to be open before you call AUGraphNodeInfo
-        status = AUGraphOpen(self.processingGraph)
-        CheckError(status)
+        status = AUGraphOpen(self.processingGraph!)
+        CheckError(error: status)
         
-        status = AUGraphNodeInfo(self.processingGraph, samplerNode, nil, &self.samplerUnit)
-        CheckError(status)
+        status = AUGraphNodeInfo(self.processingGraph!, samplerNode, nil, &self.samplerUnit)
+        CheckError(error: status)
         
-        var ioUnit:AudioUnit = nil
-        status = AUGraphNodeInfo(self.processingGraph, ioNode, nil, &ioUnit)
-        CheckError(status)
+        var ioUnit:AudioUnit? = nil
+        status = AUGraphNodeInfo(self.processingGraph!, ioNode, nil, &ioUnit)
+        CheckError(error: status)
         
         let ioUnitOutputElement = AudioUnitElement(0)
         let samplerOutputElement = AudioUnitElement(0)
-        status = AUGraphConnectNodeInput(self.processingGraph,
+        status = AUGraphConnectNodeInput(self.processingGraph!,
                                          samplerNode, samplerOutputElement, // srcnode, inSourceOutputNumber
             ioNode, ioUnitOutputElement) // destnode, inDestInputNumber
-        CheckError(status)
+        CheckError(error: status)
     }
     
     
@@ -100,21 +96,21 @@ class SoundGenerator  {
         
         var status = OSStatus(noErr)
         var outIsInitialized:DarwinBoolean = false
-        status = AUGraphIsInitialized(self.processingGraph, &outIsInitialized)
+        status = AUGraphIsInitialized(self.processingGraph!, &outIsInitialized)
         print("isinit status is \(status)")
         print("bool is \(outIsInitialized)")
         if outIsInitialized == false {
-            status = AUGraphInitialize(self.processingGraph)
-            CheckError(status)
+            status = AUGraphInitialize(self.processingGraph!)
+            CheckError(error: status)
         }
         
         var isRunning = DarwinBoolean(false)
-        status = AUGraphIsRunning(self.processingGraph, &isRunning)
+        status = AUGraphIsRunning(self.processingGraph!, &isRunning)
         print("running bool is \(isRunning) status \(status)")
         if isRunning == false {
             print("graph is not running, starting now")
-            status = AUGraphStart(self.processingGraph)
-            CheckError(status)
+            status = AUGraphStart(self.processingGraph!)
+            CheckError(error: status)
         }
         
     }
@@ -123,16 +119,16 @@ class SoundGenerator  {
         // or with channel. channel is 0 in this example
         let noteCommand = UInt32(0x90 | 0)
         var status  = OSStatus(noErr)
-        status = MusicDeviceMIDIEvent(self.samplerUnit, noteCommand, noteNum, velocity, 0)
-        CheckError(status)
+        status = MusicDeviceMIDIEvent(self.samplerUnit!, noteCommand, noteNum, velocity, 0)
+        CheckError(error: status)
         print("noteon status is \(status)")
     }
     
     func playNoteOff(noteNum:UInt32)    {
         let noteCommand = UInt32(0x80 | 0)
         var status : OSStatus = OSStatus(noErr)
-        status = MusicDeviceMIDIEvent(self.samplerUnit, noteCommand, noteNum, 0, 0)
-        CheckError(status)
+        status = MusicDeviceMIDIEvent(self.samplerUnit!, noteCommand, noteNum, 0, 0)
+        CheckError(error: status)
         print("noteoff status is \(status)")
     }
     
@@ -140,46 +136,46 @@ class SoundGenerator  {
     /// loads preset into self.samplerUnit
     func loadSF2Preset(preset:UInt8)  {
         
-        guard let bankURL = NSBundle.mainBundle().URLForResource("GeneralUser GS MuseScore v1.442", withExtension: "sf2") else {
+        guard let bankURL = Bundle.main.url(forResource: "GeneralUser GS MuseScore v1.442", withExtension: "sf2") else {
             fatalError("\"GeneralUser GS MuseScore v1.442.sf2\" file not found.")
         }
         
-        var instdata = AUSamplerInstrumentData(fileURL: Unmanaged.passUnretained(bankURL),
+        var instdata = AUSamplerInstrumentData(fileURL: Unmanaged.passUnretained(bankURL as CFURL),
                                                instrumentType: UInt8(kInstrumentType_SF2Preset),
                                                bankMSB:        UInt8(kAUSampler_DefaultMelodicBankMSB),
                                                bankLSB:        UInt8(kAUSampler_DefaultBankLSB),
                                                presetID:       preset)
         
         let status = AudioUnitSetProperty(
-            self.samplerUnit,
+            self.samplerUnit!,
             AudioUnitPropertyID(kAUSamplerProperty_LoadInstrument),
             AudioUnitScope(kAudioUnitScope_Global),
             0,
             &instdata,
-            UInt32(sizeof(AUSamplerInstrumentData)))
-        CheckError(status)
+            UInt32(MemoryLayout<AUSamplerInstrumentData>.size))
+        CheckError(error: status)
     }
     
     
     func loadDLSPreset(pn:UInt8) {
         
-        guard let bankURL = NSBundle.mainBundle().URLForResource("gs_instruments", withExtension: "dls") else {
+        guard let bankURL = Bundle.main.url(forResource: "gs_instruments", withExtension: "dls") else {
             fatalError("\"gs_instruments.dls\" file not found.")
         }
         
-        var instdata = AUSamplerInstrumentData(fileURL: Unmanaged.passUnretained(bankURL),
+        var instdata = AUSamplerInstrumentData(fileURL: Unmanaged.passUnretained(bankURL as CFURL),
                                                instrumentType: UInt8(kInstrumentType_DLSPreset),
                                                bankMSB: UInt8(kAUSampler_DefaultMelodicBankMSB),
                                                bankLSB: UInt8(kAUSampler_DefaultBankLSB),
                                                presetID: pn)
         let status = AudioUnitSetProperty(
-            self.samplerUnit,
+            self.samplerUnit!,
             UInt32(kAUSamplerProperty_LoadInstrument),
             UInt32(kAudioUnitScope_Global),
             0,
             &instdata,
-            UInt32(sizeof(AUSamplerInstrumentData)))
-        CheckError(status)
+            UInt32(MemoryLayout<AUSamplerInstrumentData>.size))
+        CheckError(error: status)
     }
     
     /**
@@ -346,19 +342,19 @@ class SoundGenerator  {
     
     func createMusicSequence() -> MusicSequence {
         // create the sequence
-        var musicSequence:MusicSequence = nil
+        var musicSequence: MusicSequence? = nil
         var status = NewMusicSequence(&musicSequence)
         if status != OSStatus(noErr) {
             print("\(#line) bad status \(status) creating sequence")
-            CheckError(status)
+            CheckError(error: status)
         }
         
         // add a track
-        var track:MusicTrack = nil
-        status = MusicSequenceNewTrack(musicSequence, &track)
+        var track: MusicTrack? = nil
+        status = MusicSequenceNewTrack(musicSequence!, &track)
         if status != OSStatus(noErr) {
             print("error creating track \(status)")
-            CheckError(status)
+            CheckError(error: status)
         }
         
         // now make some notes and put them on the track
@@ -369,78 +365,78 @@ class SoundGenerator  {
                                        velocity: 64,
                                        releaseVelocity: 0,
                                        duration: 1.0 )
-            status = MusicTrackNewMIDINoteEvent(track, beat, &mess)
+            status = MusicTrackNewMIDINoteEvent(track!, beat, &mess)
             if status != OSStatus(noErr) {
-                CheckError(status)
+                CheckError(error: status)
             }
             beat += 1
         }
         
-        loopTrack(track)
+        loopTrack(musicTrack: track!)
         
         // associate the AUGraph with the sequence.
-        MusicSequenceSetAUGraph(musicSequence, self.processingGraph)
+        MusicSequenceSetAUGraph(musicSequence!, self.processingGraph)
         
-        return musicSequence
+        return musicSequence!
     }
     
-    func createPlayer(musicSequence:MusicSequence) -> MusicPlayer {
-        var musicPlayer:MusicPlayer = nil
+    func createPlayer(musicSequence: MusicSequence?) -> MusicPlayer {
+        var musicPlayer: MusicPlayer? = nil
         
         var status = NewMusicPlayer(&musicPlayer)
         if status != noErr {
             print("bad status \(status) creating player")
-            CheckError(status)
+            CheckError(error: status)
         }
-        status = MusicPlayerSetSequence(musicPlayer, musicSequence)
+        status = MusicPlayerSetSequence(musicPlayer!, musicSequence)
         if status != noErr {
             print("setting sequence \(status)")
-            CheckError(status)
+            CheckError(error: status)
         }
-        status = MusicPlayerPreroll(musicPlayer)
+        status = MusicPlayerPreroll(musicPlayer!)
         if status != noErr {
             print("prerolling player \(status)")
-            CheckError(status)
+            CheckError(error: status)
         }
-        return musicPlayer
+        return musicPlayer!
     }
     
     // called fron the button's action
     func play() {
         var playing = DarwinBoolean(false)
-        var status = MusicPlayerIsPlaying(musicPlayer, &playing)
+        var status = MusicPlayerIsPlaying(musicPlayer!, &playing)
         if playing != false {
             print("music player is playing. stopping")
-            status = MusicPlayerStop(musicPlayer)
+            status = MusicPlayerStop(musicPlayer!)
             if status != noErr {
                 print("Error stopping \(status)")
-                CheckError(status)
+                CheckError(error: status)
                 return
             }
         } else {
             print("music player is not playing.")
         }
         
-        status = MusicPlayerSetTime(musicPlayer, 0)
+        status = MusicPlayerSetTime(musicPlayer!, 0)
         if status != noErr {
             print("setting time \(status)")
-            CheckError(status)
+            CheckError(error: status)
             return
         }
         
-        status = MusicPlayerStart(musicPlayer)
+        status = MusicPlayerStart(musicPlayer!)
         if status != noErr {
             print("Error starting \(status)")
-            CheckError(status)
+            CheckError(error: status)
             return
         }
     }
     
     func stop() {
-        let status = MusicPlayerStop(musicPlayer)
+        let status = MusicPlayerStop(musicPlayer!)
         if status != noErr {
             print("Error stopping \(status)")
-            CheckError(status)
+            CheckError(error: status)
             return
         }
     }
@@ -456,7 +452,7 @@ class SoundGenerator  {
                                            &tracklengthSize)
         if status != noErr {
             print("Error getting track length \(status)")
-            CheckError(status)
+            CheckError(error: status)
             return 0
         }
         print("track length is \(trackLength)")
@@ -465,9 +461,9 @@ class SoundGenerator  {
     
     func loopTrack(musicTrack:MusicTrack)   {
         
-        let trackLength = getTrackLength(musicTrack)
+        let trackLength = getTrackLength(musicTrack: musicTrack)
         print("track length is \(trackLength)")
-        setTrackLoopDuration(musicTrack, duration: trackLength)
+        setTrackLoopDuration(musicTrack: musicTrack, duration: trackLength)
         
         //        status = MusicTrackGetProperty(musicTrack, UInt32(kSequenceTrackProperty_LoopInfo), &loopInfo, &lisize )
         //        if status != OSStatus(noErr) {
@@ -475,7 +471,6 @@ class SoundGenerator  {
         //            CheckError(status)
         //            return
         //        }
-        
         
     }
     
@@ -489,12 +484,11 @@ class SoundGenerator  {
      */
     
     func setTrackLoopDuration(duration:Float)   {
-        var track:MusicTrack = nil
-        let status = MusicSequenceGetIndTrack(musicSequence, 0, &track)
-        CheckError(status)
-        setTrackLoopDuration(track, duration: MusicTimeStamp(duration))
+        var track: MusicTrack? = nil
+        let status = MusicSequenceGetIndTrack(musicSequence!, 0, &track)
+        CheckError(error: status)
+        setTrackLoopDuration(musicTrack: track!, duration: MusicTimeStamp(duration))
     }
-    
     
     func setTrackLoopDuration(musicTrack:MusicTrack, duration:MusicTimeStamp)   {
         print("loop duration to \(duration)")
@@ -505,11 +499,10 @@ class SoundGenerator  {
         let status = MusicTrackSetProperty(musicTrack, UInt32(kSequenceTrackProperty_LoopInfo), &loopInfo, lisize )
         if status != OSStatus(noErr) {
             print("Error setting loopinfo on track \(status)")
-            CheckError(status)
+            CheckError(error: status)
             return
         }
     }
-    
     
 }
 
